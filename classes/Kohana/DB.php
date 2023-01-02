@@ -16,8 +16,8 @@
  * @package    Kohana/Database
  * @category   Base
  * @author     Kohana Team
- * @copyright  (c) 2009 Kohana Team
- * @license    http://kohanaphp.com/license
+ * @copyright  (c) Kohana Team
+ * @license    https://koseven.ga/LICENSE.md
  */
 class Kohana_DB {
 
@@ -131,7 +131,7 @@ class Kohana_DB {
 	 * @param   array   parameters
 	 * @return  Database_Expression
 	 */
-	public static function expr($string, $parameters = array())
+	public static function expr($string, $parameters = [])
 	{
 		return new Database_Expression($string, $parameters);
 	}

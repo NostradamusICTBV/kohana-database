@@ -5,8 +5,8 @@
  * @package    Kohana/Database
  * @category   Query/Result
  * @author     Kohana Team
- * @copyright  (c) 2008-2009 Kohana Team
- * @license    http://kohanaphp.com/license
+ * @copyright  (c) Kohana Team
+ * @license    https://koseven.ga/LICENSE.md
  */
 class Kohana_Database_MySQLi_Result extends Database_Result {
 
@@ -28,6 +28,7 @@ class Kohana_Database_MySQLi_Result extends Database_Result {
 		}
 	}
 
+	#[\ReturnTypeWillChange]
 	public function seek($offset)
 	{
 		if ($this->offsetExists($offset) AND $this->_result->data_seek($offset))
@@ -43,6 +44,7 @@ class Kohana_Database_MySQLi_Result extends Database_Result {
 		}
 	}
 
+	#[\ReturnTypeWillChange]
 	public function current()
 	{
 		if ($this->_current_row !== $this->_internal_row AND ! $this->seek($this->_current_row))
