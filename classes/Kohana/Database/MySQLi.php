@@ -10,6 +10,9 @@
  */
 class Kohana_Database_MySQLi extends Database {
 
+	// Seconds to wait for the TCP connect; the cloudsql-proxy normally accepts instantly
+	const CONNECT_TIMEOUT = 5;
+
 	// Database in use by each connection
 	protected static $_current_databases = [];
 
@@ -48,31 +51,42 @@ class Kohana_Database_MySQLi extends Database {
 		// Prevent this information from showing up in traces
 		unset($this->_config['connection']['username'], $this->_config['connection']['password']);
 
-		try
+		for ($attempt = 0; ; $attempt++)
 		{
-			if(is_array($ssl))
+			try
 			{
 				$this->_connection = mysqli_init();
-				$this->_connection->ssl_set(
-					Arr::get($ssl, 'client_key_path'),
-					Arr::get($ssl, 'client_cert_path'),
-					Arr::get($ssl, 'ca_cert_path'),
-					Arr::get($ssl, 'ca_dir_path'),
-					Arr::get($ssl, 'cipher')
-				);
-				$this->_connection->real_connect($hostname, $username, $password, $database, $port, $socket, MYSQLI_CLIENT_SSL);
+				// A cloudsql-proxy pod that vanished with a scaled-down node keeps receiving connects for a few seconds; fail fast and retry instead of hanging for default_socket_timeout
+				$this->_connection->options(MYSQLI_OPT_CONNECT_TIMEOUT, self::CONNECT_TIMEOUT);
+				$flags = 0;
+				if (is_array($ssl))
+				{
+					$this->_connection->ssl_set(
+						Arr::get($ssl, 'client_key_path'),
+						Arr::get($ssl, 'client_cert_path'),
+						Arr::get($ssl, 'ca_cert_path'),
+						Arr::get($ssl, 'ca_dir_path'),
+						Arr::get($ssl, 'cipher')
+					);
+					$flags = MYSQLI_CLIENT_SSL;
+				}
+				$this->_connection->real_connect($hostname, $username, $password, $database, $port, $socket, $flags);
+				break;
 			}
-			else
+			catch (Exception $e)
 			{
-				$this->_connection = new mysqli($hostname, $username, $password, $database, $port, $socket);
-			}
-		}
-		catch (Exception $e)
-		{
-			// No connection exists
-			$this->_connection = NULL;
+				// No connection exists
+				$this->_connection = NULL;
 
-			throw new Database_Exception(':error', [':error' => $e->getMessage()], $e->getCode());
+				// 2002/2003: proxy unreachable or refused; by the next attempt the service routes to a live pod
+				if ($attempt < 1 AND in_array($e->getCode(), [2002, 2003], TRUE))
+				{
+					sleep(1);
+					continue;
+				}
+
+				throw new Database_Exception(':error', [':error' => $e->getMessage()], $e->getCode());
+			}
 		}
 
 		// \xFF is a better delimiter, but the PHP driver uses underscore
