@@ -78,10 +78,10 @@ class Kohana_Database_MySQLi extends Database {
 				// No connection exists
 				$this->_connection = NULL;
 
-				// 2002/2003: proxy unreachable or refused; by the next attempt the service routes to a live pod
-				if ($attempt < 1 AND in_array($e->getCode(), [2002, 2003], TRUE))
+				// 2002/2003: proxy unreachable or refused; each attempt picks a random proxy pod and within a few seconds the dead one is out of rotation
+				if ($attempt < 2 AND in_array($e->getCode(), [2002, 2003], TRUE))
 				{
-					sleep(1);
+					sleep(2);
 					continue;
 				}
 
